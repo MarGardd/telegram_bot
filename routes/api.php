@@ -43,3 +43,5 @@ Route::get('payment_methods', [Controller::class, 'getPaymentMethods']);
 Route::post('payment_methods', [Controller::class, 'addPaymentMethod']);
 Route::post('payment_methods/{payment_method_id}', [Controller::class, 'updatePaymentMethod']);
 Route::delete('payment_methods/{payment_method_id}', [Controller::class, 'deletePaymentMethod']);
+
+Route::get('sheet', [Controller::class, 'sheet']);

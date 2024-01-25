@@ -11,6 +11,7 @@ class PaycheckOrder extends Model
     use HasFactory;
 
     protected $fillable = [
+        'order_number',
         'chat_id',
         'username'
     ];
