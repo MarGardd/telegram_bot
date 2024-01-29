@@ -69,7 +69,7 @@ class Controller extends BaseController
                         $result[$order->id]['sum'] = $answer->answer_text;
                         break;
                     case 7:
-                        $result[$order->id]['file'] = $answer->answer_text;
+                        $result[$order->id]['file'] = url('storage/' . $answer->answer_text);
                         break;
                     case 8:
                         $result[$order->id]['comment'] = $answer->answer_text;
@@ -121,7 +121,7 @@ class Controller extends BaseController
     }
 
     public function getCompanies(){
-        return Company::all(['id', 'title']);
+        return Company::with('projects:id,title,company_id')->get(['id', 'title']);
     }
 
     public function addCompany(Request $request){
