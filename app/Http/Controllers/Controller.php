@@ -7,6 +7,13 @@ use App\Models\Company;
 use App\Models\PaycheckOrder;
 use App\Models\PaymentMethod;
 use App\Models\Project;
+use Google\Service\Drive;
+use Google\Service\Drive\Permission;
+use Google\Service\Sheets;
+use Google\Service\Sheets\Spreadsheet;
+use Google\Service\Sheets\SpreadsheetProperties;
+use Google\Service\Sheets\ValueRange;
+use Google_Client;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
 
@@ -89,7 +96,7 @@ class Controller extends BaseController
 
     public function store(Request $request){
         PaycheckOrder::create([
-            'order_number' => random_int (100000, 999999),
+            'order_number' => random_int(100000, 999999),
             'chat_id' => $request->input('chat_id'),
             'username' => $request->input('username'),
         ]);
@@ -172,5 +179,76 @@ class Controller extends BaseController
 
     public function deletePaymentMethod($payment_method){
         PaymentMethod::find($payment_method)->delete();
+    }
+
+    public function sheet(){
+        $orders = PaycheckOrder::where('deleted', false)
+                                ->where('archive', false)
+                                ->where('send', true)
+                                ->get();
+
+        $result = [];
+        foreach($orders as $order){
+            $result[0] = ['Пользователь', 'Дата', 'Компания', 'Организация', 'Проект', 'Населённый пункт', 'Способ оплаты', 'Сумма', 'Комментарий'];
+            $result[$order->id]['username'] = $order->username;
+            $result[$order->id]['date'] = $order->created_at;
+
+            $answers = Answer::where('order_id', $order->id)->get();
+            foreach($answers as $answer){                
+                switch($answer->question_id){
+                    case 1: 
+                        $result[$order->id]['company'] = $answer->answer_text;
+                        break;
+                    case 2:
+                        $result[$order->id]['organization'] = $answer->answer_text;
+                        break;
+                    case 3:
+                        $result[$order->id]['project'] = $answer->answer_text;
+                        break;
+                    case 4:
+                        $result[$order->id]['locality'] = $answer->answer_text;
+                        break;
+                    case 5:
+                        $result[$order->id]['payment_method'] = $answer->answer_text;
+                        break;
+                    case 6:
+                        $result[$order->id]['sum'] = $answer->answer_text;
+                        break;
+                    case 8:
+                        $result[$order->id]['comment'] = $answer->answer_text;
+                        break;
+                }
+            }
+            $result[$order->id] = array_values($result[$order->id]);
+        }
+
+        putenv('GOOGLE_APPLICATION_CREDENTIALS='.storage_path('service_key.json'));
+
+        $client = new Google_Client();
+        $client->useApplicationDefaultCredentials();
+        $client->addScope(['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets']);
+        
+        $service = new Sheets($client);
+
+        $SpreadsheetProperties = new SpreadsheetProperties();
+        $SpreadsheetProperties->setTitle('NewSpreadsheet');
+        $Spreadsheet = new Spreadsheet();
+        $Spreadsheet->setProperties($SpreadsheetProperties);
+        $response = $service->spreadsheets->create($Spreadsheet);
+        
+        $Drive = new Drive($client);
+        $DrivePermisson = new Permission();
+        $DrivePermisson->setType('user');
+        $DrivePermisson->setEmailAddress('informatika.1827@gmail.com');
+        $DrivePermisson->setRole('writer');
+        $Drive->permissions->create($response->spreadsheetId, $DrivePermisson);
+
+        $range = 'Sheet1!A1:Z';
+        $ValueRange = new ValueRange();
+        $ValueRange->setValues(array_values($result));
+        $options = ['valueInputOption' => 'USER_ENTERED'];
+        $service->spreadsheets_values->append($response->spreadsheetId, $range, $ValueRange, $options);
+        
+        return $response->spreadsheetUrl;
     }
 }
