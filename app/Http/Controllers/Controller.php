@@ -36,6 +36,12 @@ class Controller extends BaseController
                                 // ->when($request->input('date'), function($query) use ($request){
                                 //     $query->orderBy('created_at', $request->input('date'));
                                 // })
+                                ->when($request->input('min_date'), function($query) use ($request){
+                                    return $query->whereDate('created_at', '>=', $request->input('min_date'));
+                                })
+                                ->when($request->input('max_date'), function($query) use ($request){
+                                    return $query->whereDate('created_at', '<=', $request->input('max_date'));
+                                })
                                 ->get();
 
         $result = [];
@@ -85,12 +91,12 @@ class Controller extends BaseController
                     ->when($request->input('date'), function($query) use ($request){
                         return $query->sortBy('date', SORT_REGULAR, filter_var($request->input('date'), FILTER_VALIDATE_BOOLEAN));
                     })
-                    ->when($request->input('min_date'), function($query) use ($request){
-                        return $query->where('date', '>=', $request->input('min_date'));
-                    })
-                    ->when($request->input('max_date'), function($query) use ($request){
-                        return $query->where('date', '<=', $request->input('max_date'));
-                    })
+                    // ->when($request->input('min_date'), function($query) use ($request){
+                    //     return $query->where('date', '>=', $request->input('min_date'));
+                    // })
+                    // ->when($request->input('max_date'), function($query) use ($request){
+                    //     return $query->where('date', '<=', $request->input('max_date'));
+                    // })
                     ->values();
     }
 

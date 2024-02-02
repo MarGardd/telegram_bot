@@ -23,7 +23,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::get('questions_list', function(){ return Question::all(['id', 'question_text']); });
 
-Route::get('/', [Controller::class, 'index']);
+Route::get('paychecks', [Controller::class, 'index']);
 Route::post('/', [Controller::class, 'store']);
 Route::post('/{order_id}/check', [Controller::class, 'checked']);
 Route::post('/{order_id}/archive', [Controller::class, 'archive']);
