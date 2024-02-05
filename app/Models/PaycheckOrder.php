@@ -13,11 +13,12 @@ class PaycheckOrder extends Model
     protected $fillable = [
         'order_number',
         'chat_id',
-        'username'
+        'username',
+        'send'
     ];
 
-    public function getCreatedAtAttribute($value){        
-        if($value)            
+    public function getCreatedAtAttribute($value){
+        if($value)
             return Carbon::parse($value)->setTimezone('Europe/Samara')/*addHours(4)*/->format('d.m.Y');
         else
             return $value;
