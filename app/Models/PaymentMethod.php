@@ -11,5 +11,6 @@ class PaymentMethod extends Model
 
     protected $fillable = [
         'title',
+        'has_companies',
     ];
 }
