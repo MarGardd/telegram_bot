@@ -23,20 +23,26 @@ class Controller extends BaseController
         $archive = false;
         if ($request->input('archive'))
             $archive = $request->input('archive');
-            
+
         $orders = PaycheckOrder::where('deleted', false)
-                                ->where('archive', $archive)
-                                ->where('send', true)
-                                ->when(filter_var($request->input('checked'), FILTER_VALIDATE_BOOLEAN), function($query) use ($request){
-                                    $query->where('checked', filter_var($request->input('checked'), FILTER_VALIDATE_BOOLEAN));            
-                                })
-                                // ->when(filter_var($request->input('archive'), FILTER_VALIDATE_BOOLEAN), function($query) use ($request){
-                                //     $query->where('archive', filter_var($request->input('archive'), FILTER_VALIDATE_BOOLEAN));            
-                                // })
-                                // ->when($request->input('date'), function($query) use ($request){
-                                //     $query->orderBy('created_at', $request->input('date'));
-                                // })
-                                ->get();
+            ->where('archive', $archive)
+            ->where('send', true)
+            ->when(filter_var($request->input('checked'), FILTER_VALIDATE_BOOLEAN), function($query) use ($request){
+                $query->where('checked', filter_var($request->input('checked'), FILTER_VALIDATE_BOOLEAN));
+            })
+            // ->when(filter_var($request->input('archive'), FILTER_VALIDATE_BOOLEAN), function($query) use ($request){
+            //     $query->where('archive', filter_var($request->input('archive'), FILTER_VALIDATE_BOOLEAN));
+            // })
+            ->when($request->input('date'), function($query) use ($request){
+                $query->orderBy('created_at', $request->input('date'));
+            })
+            ->when($request->input('min_date'), function($query) use ($request){
+                return $query->whereDate('created_at', '>=', $request->input('min_date'));
+            })
+            ->when($request->input('max_date'), function($query) use ($request){
+                return $query->whereDate('created_at', '<=', $request->input('max_date'));
+            })
+            ->get();
 
         $result = [];
         foreach($orders as $order){
@@ -47,10 +53,11 @@ class Controller extends BaseController
             $result[$order->id]['checked'] = $order->checked;
             $result[$order->id]['archive'] = $order->archive;
 
+
             $answers = Answer::where('order_id', $order->id)->get();
-            foreach($answers as $answer){                
+            foreach($answers as $answer){
                 switch($answer->question_id){
-                    case 1: 
+                    case 1:
                         $result[$order->id]['company'] = $answer->answer_text;
                         break;
                     case 2:
@@ -69,29 +76,34 @@ class Controller extends BaseController
                         $result[$order->id]['sum'] = $answer->answer_text;
                         break;
                     case 7:
-                        $result[$order->id]['file'] = url('storage/' . $answer->answer_text);
+                        $result[$order->id]['pay_date'] = $answer->answer_text;
                         break;
                     case 8:
+//                        $result[$order->id]['file'] = url('storage/' . $answer->answer_text);
+                        $result[$order->id]['file'] = url($answer->answer_text);
+                        break;
+                    case 9:
                         $result[$order->id]['comment'] = $answer->answer_text;
                         break;
                 }
             }
         }
-        
+
         return collect($result)
-                    ->when($request->input('sum'), function($query) use ($request){
-                        return $query->sortBy('sum', SORT_REGULAR, filter_var($request->input('sum'), FILTER_VALIDATE_BOOLEAN));
-                    })
-                    ->when($request->input('date'), function($query) use ($request){
-                        return $query->sortBy('date', SORT_REGULAR, filter_var($request->input('date'), FILTER_VALIDATE_BOOLEAN));
-                    })
-                    ->when($request->input('min_date'), function($query) use ($request){
-                        return $query->where('date', '>=', $request->input('min_date'));
-                    })
-                    ->when($request->input('max_date'), function($query) use ($request){
-                        return $query->where('date', '<=', $request->input('max_date'));
-                    })
-                    ->values();
+            ->when($request->input('sum'), function($query) use ($request){
+                return $query->sortBy('sum', SORT_REGULAR, filter_var($request->input('sum'), FILTER_VALIDATE_BOOLEAN));
+            })
+//            ->when($request->input('date'), function($query) use ($request){
+//                return $query->sortBy('date', SORT_REGULAR, filter_var($request->input('date'), FILTER_VALIDATE_BOOLEAN));
+//            })
+            // ->when($request->input('min_date'), function($query) use ($request){
+            //     return $query->where('date', '>=', $request->input('min_date'));
+            // })
+            // ->when($request->input('max_date'), function($query) use ($request){
+            //     return $query->where('date', '<=', $request->input('max_date'));
+            // })
+//            ->sortBy('date')
+            ->values();
     }
 
     public function store(Request $request){
@@ -111,6 +123,12 @@ class Controller extends BaseController
     public function archive($order_id){
         $order = PaycheckOrder::find($order_id);
         $order->archive = true;
+        $order->save();
+    }
+
+    public function restore($order_id){
+        $order = PaycheckOrder::find($order_id);
+        $order->archive = false;
         $order->save();
     }
 
@@ -183,42 +201,47 @@ class Controller extends BaseController
 
     public function sheet(){
         $orders = PaycheckOrder::where('deleted', false)
-                                ->where('archive', false)
-                                ->where('send', true)
-                                ->get();
+            ->where('archive', false)
+            ->where('send', true)
+            ->where('checked', true)
+            ->get();
 
         $result = [];
         foreach($orders as $order){
-            $result[0] = ['Пользователь', 'Дата', 'Компания', 'Организация', 'Проект', 'Населённый пункт', 'Способ оплаты', 'Сумма', 'Комментарий'];
-            $result[$order->id]['username'] = $order->username;
-            $result[$order->id]['date'] = $order->created_at;
+            $result[0] = ['Пользователь', 'Компания', 'Организация', 'Проект', 'Населённый пункт', 'Способ оплаты', 'Сумма', 'Дата', 'Комментарий'];
+            $result[$order->id][0] = $order->username;
+//            $result[$order->id][1] = $order->created_at;
 
             $answers = Answer::where('order_id', $order->id)->get();
-            foreach($answers as $answer){                
+            foreach($answers as $answer){
                 switch($answer->question_id){
-                    case 1: 
-                        $result[$order->id]['company'] = $answer->answer_text;
+                    case 1:
+                        $result[$order->id][$answer->question_id+1] = $answer->answer_text;
                         break;
                     case 2:
-                        $result[$order->id]['organization'] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id+1] = $answer->answer_text;
                         break;
                     case 3:
-                        $result[$order->id]['project'] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id+1] = $answer->answer_text;
                         break;
                     case 4:
-                        $result[$order->id]['locality'] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id+1] = $answer->answer_text;
                         break;
                     case 5:
-                        $result[$order->id]['payment_method'] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id+1] = $answer->answer_text;
                         break;
                     case 6:
-                        $result[$order->id]['sum'] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id+1] = $answer->answer_text;
                         break;
-                    case 8:
-                        $result[$order->id]['comment'] = $answer->answer_text;
+                    case 7:
+                        $result[$order->id][$answer->question_id+1] = $answer->answer_text;
+                        break;
+                    case 9:
+                        $result[$order->id][$answer->question_id+1] = $answer->answer_text;
                         break;
                 }
             }
+            ksort($result[$order->id]);
             $result[$order->id] = array_values($result[$order->id]);
         }
 
@@ -227,7 +250,7 @@ class Controller extends BaseController
         $client = new Google_Client();
         $client->useApplicationDefaultCredentials();
         $client->addScope(['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets']);
-        
+
         $service = new Sheets($client);
 
         $SpreadsheetProperties = new SpreadsheetProperties();
@@ -235,11 +258,25 @@ class Controller extends BaseController
         $Spreadsheet = new Spreadsheet();
         $Spreadsheet->setProperties($SpreadsheetProperties);
         $response = $service->spreadsheets->create($Spreadsheet);
-        
+
         $Drive = new Drive($client);
         $DrivePermisson = new Permission();
         $DrivePermisson->setType('user');
-        $DrivePermisson->setEmailAddress('informatika.1827@gmail.com');
+        $DrivePermisson->setEmailAddress('aaverbitskiy@gmail.com');
+        $DrivePermisson->setRole('writer');
+        $Drive->permissions->create($response->spreadsheetId, $DrivePermisson);
+
+        $Drive = new Drive($client);
+        $DrivePermisson = new Permission();
+        $DrivePermisson->setType('user');
+        $DrivePermisson->setEmailAddress('izharbolit@gmail.com');
+        $DrivePermisson->setRole('writer');
+        $Drive->permissions->create($response->spreadsheetId, $DrivePermisson);
+
+        $Drive = new Drive($client);
+        $DrivePermisson = new Permission();
+        $DrivePermisson->setType('user');
+        $DrivePermisson->setEmailAddress('chubarkint@gmail.com');
         $DrivePermisson->setRole('writer');
         $Drive->permissions->create($response->spreadsheetId, $DrivePermisson);
 
@@ -248,7 +285,7 @@ class Controller extends BaseController
         $ValueRange->setValues(array_values($result));
         $options = ['valueInputOption' => 'USER_ENTERED'];
         $service->spreadsheets_values->append($response->spreadsheetId, $range, $ValueRange, $options);
-        
+
         return $response->spreadsheetUrl;
     }
 }
