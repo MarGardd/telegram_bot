@@ -23,11 +23,12 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::get('questions_list', function(){ return Question::all(['id', 'question_text']); });
 
-Route::get('paychecks', [Controller::class, 'index']);
-Route::post('/', [Controller::class, 'store']);
-Route::post('/{order_id}/check', [Controller::class, 'checked']);
-Route::post('/{order_id}/archive', [Controller::class, 'archive']);
-Route::delete('/{order_id}', [Controller::class, 'delete']);
+Route::get('/paychecks', [Controller::class, 'index']);
+Route::post('/paychecks', [Controller::class, 'store']);
+Route::post('/paychecks/{order_id}/check', [Controller::class, 'checked']);
+Route::post('/paychecks/{order_id}/archive', [Controller::class, 'archive']);
+Route::post('/paychecks/{order_id}/restore', [Controller::class, 'restore']);
+Route::delete('/paychecks/{order_id}', [Controller::class, 'delete']);
 
 Route::get('companies', [Controller::class, 'getCompanies']);
 Route::post('companies', [Controller::class, 'addCompany']);
