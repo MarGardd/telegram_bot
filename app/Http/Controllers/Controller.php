@@ -208,41 +208,13 @@ $answers = Answer::where('order_id', $order->id)->get();
 
         $result = [];
         foreach($orders as $order){
-<<<<<<< HEAD
-            $result[0] = ['Пользователь', 'Дата', 'Компания', 'Организация', 'Проект', 'Населённый пункт', 'Способ оплаты', 'Сумма', 'Комментарий'];
-            $result[$order->id][0] = $order->username;
-            $result[$order->id][1] = $order->created_at;
-=======
             $result[0] = ['Пользователь', 'Компания', 'Организация', 'Проект', 'Населённый пункт', 'Способ оплаты', 'Сумма', 'Дата', 'Комментарий'];
             $result[$order->id][0] = $order->username;
 //            $result[$order->id][1] = $order->created_at;
->>>>>>> 9bc1030a5ac20f7a570d1b58f1f2957ca7f91bd5
 
             $answers = Answer::where('order_id', $order->id)->get();
             foreach($answers as $answer){
                 switch($answer->question_id){
-<<<<<<< HEAD
-                    case 1: 
-                        $result[$order->id][$answer->question_id+2] = $answer->answer_text;
-                        break;
-                    case 2:
-                        $result[$order->id][$answer->question_id+2] = $answer->answer_text;
-                        break;
-                    case 3:
-                        $result[$order->id][$answer->question_id+2] = $answer->answer_text;
-                        break;
-                    case 4:
-                        $result[$order->id][$answer->question_id+2] = $answer->answer_text;
-                        break;
-                    case 5:
-                        $result[$order->id][$answer->question_id+2] = $answer->answer_text;
-                        break;
-                    case 6:
-                        $result[$order->id][$answer->question_id+2] = $answer->answer_text;
-                        break;
-                    case 8:
-                        $result[$order->id][$answer->question_id+2] = $answer->answer_text;
-=======
                     case 1:
                         $result[$order->id][$answer->question_id+1] = $answer->answer_text;
                         break;
@@ -266,7 +238,6 @@ $answers = Answer::where('order_id', $order->id)->get();
                         break;
                     case 9:
                         $result[$order->id][$answer->question_id+1] = $answer->answer_text;
->>>>>>> 9bc1030a5ac20f7a570d1b58f1f2957ca7f91bd5
                         break;
                 }
             }
