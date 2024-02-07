@@ -174,6 +174,7 @@ class Controller extends BaseController
     public function addPaymentMethod(Request $request){
         PaymentMethod::create([
             'title' => $request->input('title'),
+            'has_companies' => $request->input('has_companies'),
         ]);
     }
 
@@ -196,35 +197,36 @@ class Controller extends BaseController
         $result = [];
         foreach($orders as $order){
             $result[0] = ['Пользователь', 'Дата', 'Компания', 'Организация', 'Проект', 'Населённый пункт', 'Способ оплаты', 'Сумма', 'Комментарий'];
-            $result[$order->id]['username'] = $order->username;
-            $result[$order->id]['date'] = $order->created_at;
+            $result[$order->id][0] = $order->username;
+            $result[$order->id][1] = $order->created_at;
 
             $answers = Answer::where('order_id', $order->id)->get();
             foreach($answers as $answer){                
                 switch($answer->question_id){
                     case 1: 
-                        $result[$order->id]['company'] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id+2] = $answer->answer_text;
                         break;
                     case 2:
-                        $result[$order->id]['organization'] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id+2] = $answer->answer_text;
                         break;
                     case 3:
-                        $result[$order->id]['project'] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id+2] = $answer->answer_text;
                         break;
                     case 4:
-                        $result[$order->id]['locality'] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id+2] = $answer->answer_text;
                         break;
                     case 5:
-                        $result[$order->id]['payment_method'] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id+2] = $answer->answer_text;
                         break;
                     case 6:
-                        $result[$order->id]['sum'] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id+2] = $answer->answer_text;
                         break;
                     case 8:
-                        $result[$order->id]['comment'] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id+2] = $answer->answer_text;
                         break;
                 }
             }
+            ksort($result[$order->id]);
             $result[$order->id] = array_values($result[$order->id]);
         }
 
