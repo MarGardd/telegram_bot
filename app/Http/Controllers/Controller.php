@@ -192,7 +192,6 @@ class Controller extends BaseController
     public function addPaymentMethod(Request $request){
         PaymentMethod::create([
             'title' => $request->input('title'),
-            'has_companies' => $request->input('has_companies'),
         ]);
     }
 
@@ -208,10 +207,10 @@ class Controller extends BaseController
 
     public function sheet(){
         $orders = PaycheckOrder::where('deleted', false)
-                                ->where('archive', false)
-                                ->where('send', true)
-                                ->where('checked', true)
-                                ->get();
+            ->where('archive', false)
+            ->where('send', true)
+            ->where('checked', true)
+            ->get();
 
         $result = [];
         foreach($orders as $order){
@@ -269,7 +268,21 @@ class Controller extends BaseController
         $Drive = new Drive($client);
         $DrivePermisson = new Permission();
         $DrivePermisson->setType('user');
-        $DrivePermisson->setEmailAddress('informatika.1827@gmail.com');
+        $DrivePermisson->setEmailAddress('aaverbitskiy@gmail.com');
+        $DrivePermisson->setRole('writer');
+        $Drive->permissions->create($response->spreadsheetId, $DrivePermisson);
+
+        $Drive = new Drive($client);
+        $DrivePermisson = new Permission();
+        $DrivePermisson->setType('user');
+        $DrivePermisson->setEmailAddress('izharbolit@gmail.com');
+        $DrivePermisson->setRole('writer');
+        $Drive->permissions->create($response->spreadsheetId, $DrivePermisson);
+
+        $Drive = new Drive($client);
+        $DrivePermisson = new Permission();
+        $DrivePermisson->setType('user');
+        $DrivePermisson->setEmailAddress('chubarkint@gmail.com');
         $DrivePermisson->setRole('writer');
         $Drive->permissions->create($response->spreadsheetId, $DrivePermisson);
 

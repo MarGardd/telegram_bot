@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\PaycheckOrder;
 use App\Models\PaymentMethod;
 use App\Models\Project;
+use App\Models\Question;
 use DefStudio\Telegraph\Facades\Telegraph;
 use DefStudio\Telegraph\Handlers\WebhookHandler;
 use DefStudio\Telegraph\Keyboard\Button;
@@ -153,8 +154,8 @@ class Handler extends WebhookHandler {
                 //Log::info($log);
                 return;
             }
-                $this->chat->message('Способ оплаты: '.$paymentMethod)->silent()->send();
-                $this->chat->message("Укажите сумму оплаты")->forceReply()->send();
+            $this->chat->message('Способ оплаты: '.$paymentMethod)->silent()->send();
+            $this->chat->message("Укажите сумму оплаты")->forceReply()->send();
 
         } catch (\Exception $e){
             //Log::info($e);
@@ -211,7 +212,6 @@ class Handler extends WebhookHandler {
             $sum = count($answers->where('question_id', 6))>0 ? ($answers->where('question_id', 6)->values())[0]->answer_text: null;
             $payDate = count($answers->where('question_id', 7))>0 ? ($answers->where('question_id', 7)->values())[0]->answer_text: null;
             $photo = count($answers->where('question_id', 8))>0 ? "Добавлено" : "Не добавлено";
-
             $comment = count($answers->where('question_id', 9))>0 ? ($answers->where('question_id', 9)->values())[0]->answer_text : "";
 
             $projects = null;
@@ -232,14 +232,27 @@ class Handler extends WebhookHandler {
                 "Комментарий к трансакции: ".$comment."\n";
             $this->chat->message($message)->send();
         } catch (\Exception $e){
-            //Log::info($e);
+            Log::info($e);
             $this->chat->message("Произошла ошибка, попробуйте повторить позже")->send();
         }
     }
 
     public function send(){
         $order = PaycheckOrder::query()->where('chat_id', $this->chat->chat_id)->where('send', false)->first();
+
         if($order){
+            $answers = Answer::query()->where('order_id', $order->id)->pluck('question_id')->toArray();
+            $allQuestions = Question::all()->where('text', '!=', "Комментарий к транзакции:")->pluck('id')->toArray();
+//            Log::info(json_encode($answers));
+//            Log::info(json_encode($allQuestions));
+            $emptyAnswers = array_diff($allQuestions, $answers);
+            $unansweredQuestions = Question::query()->whereIn('id', $emptyAnswers)->pluck('question_text');
+            if($unansweredQuestions->count()>0){
+                $message = "Вы не ответили на следующие вопросы:\n\n" . $unansweredQuestions->implode("\n") .
+                    "\n\nДля ответа на эти вопросы ответьте на последний заданный вопрос или напиши ответ на нужное сообщение";
+                $this->chat->message($message)->send();
+                return;
+            }
             $order->update(['send' => true]);
             $this->chat->message("Ваш чек успешно отправлен!")->send();
         } else
@@ -307,12 +320,12 @@ class Handler extends WebhookHandler {
                     $orderId = $this->createAnswer($this->chat->chat_id, $this->message->text(), 4);
                     $paymentMethods = PaymentMethod::all();
                     $buttons = [];
-                foreach ($paymentMethods as $index => $paymentMethod){
-                    //Log::info($paymentMethod->title);
-                    $buttons[] = Button::make($paymentMethod->title)
-                        ->action('setPaymentMethod')
-                        ->param('paymentMethod', $paymentMethod->id);
-                }
+                    foreach ($paymentMethods as $index => $paymentMethod){
+                        //Log::info($paymentMethod->title);
+                        $buttons[] = Button::make($paymentMethod->title)
+                            ->action('setPaymentMethod')
+                            ->param('paymentMethod', $paymentMethod->id);
+                    }
                     $messageText = 'Выберите способ оплаты:';
                     $log = Telegraph::chat($this->chat)
                         ->message($messageText)
@@ -334,7 +347,7 @@ class Handler extends WebhookHandler {
                 }
                 if($this->message->replyToMessage()->text() == "Добавьте фотографию, подтверждающую оплату (чек, скрин перевода и т.п.)"){
                     $client = new Client([
-                       'base_uri' =>  'https://api.telegram.org/bot' . env("TELEGRAM_BOT_TOKEN") . '/',
+                        'base_uri' =>  'https://api.telegram.org/bot' . env("TELEGRAM_BOT_TOKEN") . '/',
                     ]);
                     $response = $client->get('getFile', [
                         'query' => [
@@ -352,9 +365,9 @@ class Handler extends WebhookHandler {
                         $path = Storage::disk('public')->put($fileName, $response->getBody());
                         $this->createAnswer($this->chat->chat_id, $fileName, 8);
                     }
-                   else
+                    else
                         $this->chat->message("Произошла ошибка, попробуйте повторить позже")->send();
-                   $this->chat->message("Укажите комментарий к транзакции:")->forceReply()->send();
+                    $this->chat->message("Укажите комментарий к транзакции:")->forceReply()->send();
                 }
                 if($this->message->replyToMessage()->text() == "Укажите комментарий к транзакции:"){
                     $orderId = $this->createAnswer($this->chat->chat_id, $this->message->text(), 9);
