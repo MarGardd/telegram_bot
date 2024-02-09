@@ -11,10 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('payment_methods', function (Blueprint $table) {
+        Schema::create('paycheck_order_files', function (Blueprint $table) {
             $table->id('id');
-            $table->string('title');
-            $table->boolean('has_companies')->default(false);
+            $table->integer('order_id');
+            $table->string('path');
             $table->timestamps();
         });
     }
@@ -24,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('payment_methods');
+        Schema::dropIfExists('paycheck_order_files');
     }
 };

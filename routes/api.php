@@ -23,12 +23,14 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::get('questions_list', function(){ return Question::all(['id', 'question_text']); });
 
-Route::get('/paychecks', [Controller::class, 'index']);
-Route::post('/paychecks', [Controller::class, 'store']);
-Route::post('/paychecks/{order_id}/check', [Controller::class, 'checked']);
-Route::post('/paychecks/{order_id}/archive', [Controller::class, 'archive']);
-Route::post('/paychecks/{order_id}/restore', [Controller::class, 'restore']);
-Route::delete('/paychecks/{order_id}', [Controller::class, 'delete']);
+Route::get('paychecks', [Controller::class, 'index']);
+Route::post('paychecks', [Controller::class, 'store']);
+Route::post('paychecks/{order_id}', [Controller::class, 'update']);
+Route::post('paychecks/{order_id}/add-photo', [Controller::class, 'addPhoto']);
+Route::post('paychecks/{order_id}/check', [Controller::class, 'checked']);
+Route::post('paychecks/{order_id}/archive', [Controller::class, 'archive']);
+Route::post('paychecks/{order_id}/restore', [Controller::class, 'restore']);
+Route::delete('paychecks/{order_id}', [Controller::class, 'delete']);
 
 Route::get('companies', [Controller::class, 'getCompanies']);
 Route::post('companies', [Controller::class, 'addCompany']);
@@ -46,3 +48,10 @@ Route::post('payment_methods/{payment_method_id}', [Controller::class, 'updatePa
 Route::delete('payment_methods/{payment_method_id}', [Controller::class, 'deletePaymentMethod']);
 
 Route::get('sheet', [Controller::class, 'sheet']);
+
+Route::get('users', [Controller::class, 'getUsers']);
+Route::post('users', [Controller::class, 'createUser']);
+Route::post('users/{user_id}', [Controller::class, 'recoverUser']);
+Route::delete('users/{user_id}', [Controller::class, 'deleteUser']);
+Route::post('admin/{user_id}', [Controller::class, 'setAdmin']);
+Route::delete('admin/{user_id}', [Controller::class, 'deleteAdmin']);

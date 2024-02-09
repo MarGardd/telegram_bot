@@ -23,4 +23,12 @@ class PaycheckOrder extends Model
         else
             return $value;
     }
+
+    public function answers(){
+        return $this->hasMany(Answer::class, 'order_id');
+    }
+
+    public function files(){
+        return $this->hasMany(PaycheckOrderFile::class, 'order_id');
+    }
 }

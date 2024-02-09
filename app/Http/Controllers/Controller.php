@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Answer;
 use App\Models\Company;
 use App\Models\PaycheckOrder;
+use App\Models\PaycheckOrderFile;
 use App\Models\PaymentMethod;
 use App\Models\Project;
+use App\Models\User;
 use Google\Service\Drive;
 use Google\Service\Drive\Permission;
 use Google\Service\Sheets;
@@ -16,6 +18,7 @@ use Google\Service\Sheets\ValueRange;
 use Google_Client;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
+use Illuminate\Support\Facades\Hash;
 
 class Controller extends BaseController
 {
@@ -24,37 +27,24 @@ class Controller extends BaseController
         if ($request->input('archive'))
             $archive = $request->input('archive');
 
-        $orders = PaycheckOrder::where('deleted', false)
-            ->where('archive', $archive)
-            ->where('send', true)
-            ->when(filter_var($request->input('checked'), FILTER_VALIDATE_BOOLEAN), function($query) use ($request){
-                $query->where('checked', filter_var($request->input('checked'), FILTER_VALIDATE_BOOLEAN));
-            })
-            // ->when(filter_var($request->input('archive'), FILTER_VALIDATE_BOOLEAN), function($query) use ($request){
-            //     $query->where('archive', filter_var($request->input('archive'), FILTER_VALIDATE_BOOLEAN));
-            // })
-             ->when($request->input('date'), function($query) use ($request){
-                 $query->orderBy('created_at', $request->input('date'));
-             })
-            ->when($request->input('min_date'), function($query) use ($request){
-                return $query->whereDate('created_at', '>=', $request->input('min_date'));
-            })
-            ->when($request->input('max_date'), function($query) use ($request){
-                return $query->whereDate('created_at', '<=', $request->input('max_date'));
-            })
-            ->get();
+        $orders = PaycheckOrder::with('files')
+                                ->where('deleted', false)
+                                ->where('archive', $archive)
+                                ->where('send', true)
+                                                                
+                                ->get();
 
         $result = [];
         foreach($orders as $order){
             $result[$order->id]['id'] = $order->id;
             $result[$order->id]['username'] = $order->username;
+            $result[$order->id]['files'] = $order->files;
             $result[$order->id]['date'] = $order->created_at;
             $result[$order->id]['status'] = $order->status;
             $result[$order->id]['checked'] = $order->checked;
             $result[$order->id]['archive'] = $order->archive;
 
-
-$answers = Answer::where('order_id', $order->id)->get();
+            $answers = Answer::where('order_id', $order->id)->get();
             foreach($answers as $answer){
                 switch($answer->question_id){
                     case 1:
@@ -78,9 +68,6 @@ $answers = Answer::where('order_id', $order->id)->get();
                     case 7:
                         $result[$order->id]['pay_date'] = $answer->answer_text;
                         break;
-                    case 8:
-                        $result[$order->id]['file'] = url('storage/' . $answer->answer_text);
-                        break;
                     case 9:
                         $result[$order->id]['comment'] = $answer->answer_text;
                         break;
@@ -91,6 +78,9 @@ $answers = Answer::where('order_id', $order->id)->get();
         return collect($result)
             ->when($request->input('sum'), function($query) use ($request){
                 return $query->sortBy('sum', SORT_REGULAR, filter_var($request->input('sum'), FILTER_VALIDATE_BOOLEAN));
+            })
+            ->when($request->input('sort'), function($query) use ($request){
+                return $query->sortBy($request->input('sort'));
             })
 //            ->when($request->input('date'), function($query) use ($request){
 //                return $query->sortBy('date', SORT_REGULAR, filter_var($request->input('date'), FILTER_VALIDATE_BOOLEAN));
@@ -111,6 +101,23 @@ $answers = Answer::where('order_id', $order->id)->get();
             'chat_id' => $request->input('chat_id'),
             'username' => $request->input('username'),
         ]);
+    }
+
+    public function update(Request $request, $order_id){
+        $answer = Answer::where('order_id', $order_id)->where('question_id', $request->input('question_id'))->get();
+        $answer[0]->answer_text = $request->input('answer_text') ?? $answer->answer_text;
+        $answer[0]->save();
+    }
+
+    public function addPhoto(Request $request, $order_id){
+        if($request->hasFile('file')){
+            $file = $request->file('file');            
+            $path = $file->storeAs('', $file->hashName(), 'public');                                
+            PaycheckOrderFile::create([
+                'order_id' => $order_id,
+                'path' => $path
+            ]);            
+        }
     }
 
     public function checked($order_id){
@@ -216,28 +223,28 @@ $answers = Answer::where('order_id', $order->id)->get();
             foreach($answers as $answer){
                 switch($answer->question_id){
                     case 1:
-                        $result[$order->id][$answer->question_id+1] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id] = $answer->answer_text;
                         break;
                     case 2:
-                        $result[$order->id][$answer->question_id+1] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id] = $answer->answer_text;
                         break;
                     case 3:
-                        $result[$order->id][$answer->question_id+1] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id] = $answer->answer_text;
                         break;
                     case 4:
-                        $result[$order->id][$answer->question_id+1] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id] = $answer->answer_text;
                         break;
                     case 5:
-                        $result[$order->id][$answer->question_id+1] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id] = $answer->answer_text;
                         break;
                     case 6:
-                        $result[$order->id][$answer->question_id+1] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id] = $answer->answer_text;
                         break;
                     case 7:
-                        $result[$order->id][$answer->question_id+1] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id] = $answer->answer_text;
                         break;
                     case 9:
-                        $result[$order->id][$answer->question_id+1] = $answer->answer_text;
+                        $result[$order->id][$answer->question_id] = $answer->answer_text;
                         break;
                 }
             }
@@ -262,7 +269,7 @@ $answers = Answer::where('order_id', $order->id)->get();
         $Drive = new Drive($client);
         $DrivePermisson = new Permission();
         $DrivePermisson->setType('user');
-        $DrivePermisson->setEmailAddress('chubarkint@gmail.com');
+        $DrivePermisson->setEmailAddress('informatika.1827@gmail.com');
         $DrivePermisson->setRole('writer');
         $Drive->permissions->create($response->spreadsheetId, $DrivePermisson);
 
@@ -273,5 +280,107 @@ $answers = Answer::where('order_id', $order->id)->get();
         $service->spreadsheets_values->append($response->spreadsheetId, $range, $ValueRange, $options);
 
         return $response->spreadsheetUrl;
+    }
+
+    public function filter(Request $request, PaycheckOrder $orders){
+        $orders->when(filter_var($request->input('checked'), FILTER_VALIDATE_BOOLEAN), function($query) use ($request){
+            $query->where('checked', filter_var($request->input('checked'), FILTER_VALIDATE_BOOLEAN));
+        })
+        // ->when(filter_var($request->input('archive'), FILTER_VALIDATE_BOOLEAN), function($query) use ($request){
+        //     $query->where('archive', filter_var($request->input('archive'), FILTER_VALIDATE_BOOLEAN));
+        // })
+        ->when($request->input('date'), function($query) use ($request){
+            $query->orderBy('created_at', $request->input('date'));
+        })
+        ->when($request->input('min_date'), function($query) use ($request){
+            return $query->whereDate('created_at', '>=', $request->input('min_date'));
+        })
+        ->when($request->input('max_date'), function($query) use ($request){
+            return $query->whereDate('created_at', '<=', $request->input('max_date'));
+        })
+        ->when($request->input('company'), function($query) use ($request){
+            return $query->whereHas('answers', function ($query) use ($request){
+                $query->where('question_id', 1)->where('answer_text', $request->input('company'));
+            });
+        })
+        ->when($request->input('organization'), function($query) use ($request){
+            return $query->whereHas('answers', function ($query) use ($request){
+                $query->where('question_id', 2)->where('answer_text', 'ilike', '%' . $request->input('organization') . '%');
+            });
+        })
+        ->when($request->input('project'), function($query) use ($request){
+            return $query->whereHas('answers', function ($query) use ($request){
+                $query->where('question_id', 3)->where('answer_text', $request->input('project'));
+            });
+        })
+        ->when($request->input('locality'), function($query) use ($request){
+            return $query->whereHas('answers', function ($query) use ($request){
+                $query->where('question_id', 4)->where('answer_text', 'ilike', '%' . $request->input('locality') . '%');
+            });
+        })
+        ->when($request->input('payment_method'), function($query) use ($request){
+            return $query->whereHas('answers', function ($query) use ($request){
+                $query->where('question_id', 5)->where('answer_text', $request->input('payment_method'));
+            });
+        })
+        ->when($request->input('min_sum'), function($query) use ($request){
+            return $query->whereHas('answers', function ($query) use ($request){
+                $query->where('question_id', 6)->whereRaw('CAST(answer_text as decimal) >= ?', [(int)$request->input('min_sum')]);
+            });
+        })
+        ->when($request->input('max_sum'), function($query) use ($request){
+            return $query->whereHas('answers', function ($query) use ($request){
+                $query->where('question_id', 6)->whereRaw('CAST(answer_text as decimal) <= ?', [(int)$request->input('max_sum')]);
+            });
+        })
+        ->when($request->input('min_pay_date'), function($query) use ($request){
+            return $query->whereHas('answers', function ($query) use ($request){
+                $query->where('question_id', 7)->whereDate('answer_text', '>=', date($request->input('min_pay_date')));
+            });
+        })
+        ->when($request->input('max_pay_date'), function($query) use ($request){
+            return $query->whereHas('answers', function ($query) use ($request){
+                $query->where('question_id', 7)->whereDate('answer_text', '<=', date($request->input('max_pay_date')));
+            });
+        });
+
+        return $orders;
+    }
+
+    public function getUsers(){
+        return User::orderByDesc('deleted')->orderBy('name')->get(['id', 'name', 'email']);
+    }
+
+    public function createUser(Request $request)
+    {
+        User::create([            
+            'name' => $request->input('name'),
+            'email' => $request->input('email'),
+            'password' => Hash::make($request->input('password')),
+        ]);
+    }
+
+    public function deleteUser($user_id){
+        $user = User::find($user_id);
+        $user->deleted = true;
+        $user->save();
+    }
+
+    public function recoverUser($user_id){
+        $user = User::find($user_id);
+        $user->deleted = false;
+        $user->save();
+    }
+
+    public function setAdmin($user_id){
+        $user = User::find($user_id);
+        $user->is_admin = true;
+        $user->save();
+    }
+
+    public function deleteAdmin($user_id){
+        $user = User::find($user_id);
+        $user->is_admin = false;
+        $user->save();
     }
 }
