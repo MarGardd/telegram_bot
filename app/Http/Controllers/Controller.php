@@ -31,7 +31,7 @@ class Controller extends BaseController
                                 ->where('deleted', false)
                                 ->where('archive', $archive)
                                 ->where('send', true)
-                                                                
+
                                 ->get();
 
         $result = [];
@@ -39,6 +39,7 @@ class Controller extends BaseController
             $result[$order->id]['id'] = $order->id;
             $result[$order->id]['username'] = $order->username;
             $result[$order->id]['files'] = $order->files;
+            $result[$order->id]['files'][] = ["path"=>null];
             $result[$order->id]['date'] = $order->created_at;
             $result[$order->id]['status'] = $order->status;
             $result[$order->id]['checked'] = $order->checked;
@@ -111,12 +112,12 @@ class Controller extends BaseController
 
     public function addPhoto(Request $request, $order_id){
         if($request->hasFile('file')){
-            $file = $request->file('file');            
-            $path = $file->storeAs('', $file->hashName(), 'public');                                
+            $file = $request->file('file');
+            $path = $file->storeAs('', $file->hashName(), 'public');
             PaycheckOrderFile::create([
                 'order_id' => $order_id,
                 'path' => $path
-            ]);            
+            ]);
         }
     }
 
@@ -366,7 +367,7 @@ class Controller extends BaseController
 
     public function createUser(Request $request)
     {
-        User::create([            
+        User::create([
             'name' => $request->input('name'),
             'email' => $request->input('email'),
             'password' => Hash::make($request->input('password')),

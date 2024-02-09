@@ -5,6 +5,7 @@ namespace App\Telegram;
 use App\Models\Answer;
 use App\Models\Company;
 use App\Models\PaycheckOrder;
+use App\Models\PaycheckOrderFile;
 use App\Models\PaymentMethod;
 use App\Models\Project;
 use App\Models\Question;
@@ -32,6 +33,7 @@ class Handler extends WebhookHandler {
 
     public function create(){
         try {
+            $this->chat->storage()->forget('sending_photo');
             if($this->reject($this->chat))
                 return;
             $orderId = random_int(100000, 999999);
@@ -200,8 +202,10 @@ class Handler extends WebhookHandler {
     }
 
     public function preview() {
+        $this->chat->storage()->forget('sending_photo');
         try{
-            $orderId = PaycheckOrder::query()->where('chat_id', $this->chat->chat_id)->where('send', false)->first()->id;
+            $order = PaycheckOrder::query()->where('chat_id', $this->chat->chat_id)->where('send', false)->first();
+            $orderId = $order->id;
             $answers = Answer::query()->where('order_id', $orderId)->orderBy("id")->get();
 
             $company = count($answers->where('question_id', 1))>0 ? ($answers->where('question_id', 1)->values())[0]->answer_text : null;
@@ -211,7 +215,7 @@ class Handler extends WebhookHandler {
             $paymentMethod = count($answers->where('question_id', 5))>0 ? ($answers->where('question_id', 5)->values())[0]->answer_text: null;
             $sum = count($answers->where('question_id', 6))>0 ? ($answers->where('question_id', 6)->values())[0]->answer_text: null;
             $payDate = count($answers->where('question_id', 7))>0 ? ($answers->where('question_id', 7)->values())[0]->answer_text: null;
-            $photo = count($answers->where('question_id', 8))>0 ? "Добавлено" : "Не добавлено";
+            $photo = count($order->files)>0 ? "Добавлено" : "Не добавлено";
             $comment = count($answers->where('question_id', 9))>0 ? ($answers->where('question_id', 9)->values())[0]->answer_text : "";
 
             $projects = null;
@@ -238,11 +242,16 @@ class Handler extends WebhookHandler {
     }
 
     public function send(){
+        $this->chat->storage()->forget('sending_photo');
         $order = PaycheckOrder::query()->where('chat_id', $this->chat->chat_id)->where('send', false)->first();
 
         if($order){
             $answers = Answer::query()->where('order_id', $order->id)->pluck('question_id')->toArray();
-            $allQuestions = Question::all()->where('text', '!=', "Комментарий к транзакции:")->pluck('id')->toArray();
+            $allQuestions = Question::query()->where('question_text', '!=', "Комментарий к транзакции:")
+                ->where('question_text', '!=', "Добавьте фотографию, подтверждающую оплату (чек, скрин перевода и т.п.)")
+                ->pluck('id')->toArray();
+            Log::info(json_encode($allQuestions));
+            $orderFiles = $order->files;
 //            Log::info(json_encode($answers));
 //            Log::info(json_encode($allQuestions));
             $emptyAnswers = array_diff($allQuestions, $answers);
@@ -253,6 +262,10 @@ class Handler extends WebhookHandler {
                 $this->chat->message($message)->send();
                 return;
             }
+            if(count($orderFiles) == 0){
+                $this->chat->message("Вы не добавили фотографию чека.\nДля добавления файлов дайте ответ на вопрос 'Добавьте фотографию, подтверждающую оплату (чек, скрин перевода и т.п.)'")->send();
+                return;
+            }
             $order->update(['send' => true]);
             $this->chat->message("Ваш чек успешно отправлен!")->send();
         } else
@@ -261,6 +274,7 @@ class Handler extends WebhookHandler {
     }
 
     public function cancel() {
+        $this->chat->storage()->forget('sending_photo');
         $order = PaycheckOrder::query()->where('chat_id', $this->chat->chat_id)->where('send', false)->first();
         if($order){
             $order->delete();
@@ -272,6 +286,7 @@ class Handler extends WebhookHandler {
 
     private function reject(TelegraphChat $chat){
         try {
+            $this->chat->storage()->forget('sending_photo');
             if(count(PaycheckOrder::query()->where('chat_id', $chat->chat_id)->where('send', false)->get())>0){
                 $chat->message("Вы не закончили создание предыдущего чека. Напишите сообщение в ответ на последний заданный вопрос или отмените создание, с помощью команды /cancel")
                     ->send();
@@ -346,33 +361,40 @@ class Handler extends WebhookHandler {
                     $this->chat->message("Добавьте фотографию, подтверждающую оплату (чек, скрин перевода и т.п.)")->forceReply()->send();
                 }
                 if($this->message->replyToMessage()->text() == "Добавьте фотографию, подтверждающую оплату (чек, скрин перевода и т.п.)"){
+                    $orderId = PaycheckOrder::query()->where('chat_id', $this->chat->chat_id)->where("send", false)->first()->id;
                     $client = new Client([
                         'base_uri' =>  'https://api.telegram.org/bot' . env("TELEGRAM_BOT_TOKEN") . '/',
                     ]);
-                    $response = $client->get('getFile', [
-                        'query' => [
-                            'file_id' => $this->message->toArray()['photos'][2]['id'],
-                        ],
-                    ]);
-                    $data = json_decode($response->getBody(), true);
-                    if($data['ok']){
-                        $client = new Client();
-                        $url ="https://api.telegram.org/file/bot".env("TELEGRAM_BOT_TOKEN")."/".$data['result']['file_path'];
-                        $response = $client->get($url);
+                    $photos = $this->message->photos()->toArray();
+                    $file = end($photos);
+                        $response = $client->get('getFile', [
+                            'query' => [
+                                'file_id' => $file['id'],
+                            ],
+                        ]);
+                        $data = json_decode($response->getBody(), true);
+                        if($data['ok']){
+                            $client = new Client();
+                            $url ="https://api.telegram.org/file/bot".env("TELEGRAM_BOT_TOKEN")."/".$data['result']['file_path'];
+                            $response = $client->get($url);
 
-                        $fileName = basename($url);
-
-                        $path = Storage::disk('public')->put($fileName, $response->getBody());
-                        $this->createAnswer($this->chat->chat_id, $fileName, 8);
-                    }
-                    else
-                        $this->chat->message("Произошла ошибка, попробуйте повторить позже")->send();
-                    $this->chat->message("Укажите комментарий к транзакции:")->forceReply()->send();
+                            $path = basename($url);
+                            $fileExtension = pathinfo($path, PATHINFO_EXTENSION);
+                            $date = date('YmdHis');
+                            $result = Storage::disk('public')->put($date.".".$fileExtension, $response->getBody());
+                            PaycheckOrderFile::query()->create(['order_id'=>$orderId, 'path'=>$date.".".$fileExtension]);
+                        }
+                        else
+                            $this->chat->message("Произошла ошибка при отправке фото ".$index+1 . ". Попробуйте отправить его позже")->send();
+                    if(!$this->chat->storage()->get('sending_photo'))
+                        $this->chat->message("Укажите комментарий к транзакции:")->forceReply()->send();
+                    $this->chat->storage()->set('sending_photo', '1');
                 }
                 if($this->message->replyToMessage()->text() == "Укажите комментарий к транзакции:"){
+                    $this->chat->storage()->forget('sending_photo');
                     $orderId = $this->createAnswer($this->chat->chat_id, $this->message->text(), 9);
                     $this->chat->message("Проверьте введенные данные: ")->silent()->send();
-                    $this->preview($orderId);
+                    $this->preview();
                 }
             }
 

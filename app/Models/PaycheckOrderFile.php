@@ -17,7 +17,7 @@ class PaycheckOrderFile extends Model
 
     public function getPathAttribute($value){
         if($value)
-            return url('storage/' . $value);
+            return url($value);
         else
             return $value;
     }
