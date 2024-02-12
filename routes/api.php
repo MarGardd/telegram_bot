@@ -27,6 +27,8 @@ Route::get('paychecks', [Controller::class, 'index']);
 Route::post('paychecks', [Controller::class, 'store']);
 Route::post('paychecks/{order_id}', [Controller::class, 'update']);
 Route::post('paychecks/{order_id}/add-photo', [Controller::class, 'addPhoto']);
+Route::get('paychecks/photo/{file_id}', [Controller::class, 'showPhoto'])->name('show-photo');
+Route::delete('paychecks/photo/{file_id}', [Controller::class, 'deletePhoto']);
 Route::post('paychecks/{order_id}/check', [Controller::class, 'checked']);
 Route::post('paychecks/{order_id}/archive', [Controller::class, 'archive']);
 Route::post('paychecks/{order_id}/restore', [Controller::class, 'restore']);

@@ -19,6 +19,8 @@ use Google_Client;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Controller extends BaseController
 {
@@ -30,9 +32,8 @@ class Controller extends BaseController
         $orders = PaycheckOrder::with('files')
                                 ->where('deleted', false)
                                 ->where('archive', $archive)
-                                ->where('send', true)
-                                                                
-                                ->get();
+                                ->where('send', true);
+        $orders = $this->filter($request, $orders)->get();
 
         $result = [];
         foreach($orders as $order){
@@ -120,6 +121,23 @@ class Controller extends BaseController
         }
     }
 
+    public function showPhoto($file_id)
+    {
+        $file = PaycheckOrderFile::find($file_id);
+        $path = Str::afterLast($file->path, '/');
+        if(Storage::disk('public')->exists($path))
+            return response()->file(storage_path('app/public/' . $path));        
+        else
+            abort(404);
+    }
+
+    public function deletePhoto($file_id){
+        $file = PaycheckOrderFile::find($file_id);
+        $path = Str::afterLast($file->path, '/');
+        Storage::disk('public')->delete($path);
+        $file->delete();
+    }
+
     public function checked($order_id){
         $order = PaycheckOrder::find($order_id);
         $order->checked = true;
@@ -205,16 +223,20 @@ class Controller extends BaseController
         PaymentMethod::find($payment_method)->delete();
     }
 
-    public function sheet(){
-        $orders = PaycheckOrder::where('deleted', false)
-            ->where('archive', false)
-            ->where('send', true)
-            ->where('checked', true)
-            ->get();
+    public function sheet(Request $request){
+        $archive = false;
+        if ($request->input('archive'))
+            $archive = $request->input('archive');
+
+        $orders = PaycheckOrder::with('files')
+                                ->where('deleted', false)
+                                ->where('archive', $archive)
+                                ->where('send', true);
+        $orders = $this->filter($request, $orders)->get();
 
         $result = [];
         foreach($orders as $order){
-            $result[0] = ['Пользователь', 'Компания', 'Организация', 'Проект', 'Населённый пункт', 'Способ оплаты', 'Сумма', 'Дата', 'Комментарий'];
+            $result[0] = ['Пользователь', 'Компания', 'Организация', 'Проект', 'Населённый пункт', 'Способ оплаты', 'Сумма', 'Дата', 'Комментарий', 'Файлы'];
             $result[$order->id][0] = $order->username;
 //            $result[$order->id][1] = $order->created_at;
 
@@ -247,6 +269,13 @@ class Controller extends BaseController
                         break;
                 }
             }
+
+            $paths = '';
+            foreach($order->files as $file){
+                $paths .= route('show-photo', $file->id)." ";
+            }
+            $result[$order->id][] = $paths;
+
             ksort($result[$order->id]);
             $result[$order->id] = array_values($result[$order->id]);
         }
@@ -282,7 +311,7 @@ class Controller extends BaseController
         $Drive = new Drive($client);
         $DrivePermisson = new Permission();
         $DrivePermisson->setType('user');
-        $DrivePermisson->setEmailAddress('chubarkint@gmail.com');
+        $DrivePermisson->setEmailAddress('informatika.1827@gmail.com');
         $DrivePermisson->setRole('writer');
         $Drive->permissions->create($response->spreadsheetId, $DrivePermisson);
 
@@ -295,7 +324,7 @@ class Controller extends BaseController
         return $response->spreadsheetUrl;
     }
 
-    public function filter(Request $request, PaycheckOrder $orders){
+    public function filter(Request $request, $orders){
         $orders->when(filter_var($request->input('checked'), FILTER_VALIDATE_BOOLEAN), function($query) use ($request){
             $query->where('checked', filter_var($request->input('checked'), FILTER_VALIDATE_BOOLEAN));
         })
