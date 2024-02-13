@@ -183,8 +183,8 @@ class Controller extends BaseController
         Company::find($company_id)->delete();
     }
 
-    public function getProjects($company_id){
-        return Project::where('company_id', $company_id)->get(['id', 'title']);
+    public function getProjects(Request $request){
+        return Project::whereIn('company_id', $request->input('company_id'))->get(['id', 'title']);
     }
 
     public function addProject(Request $request, $company_id){
@@ -341,9 +341,12 @@ class Controller extends BaseController
         ->when($request->input('max_date'), function($query) use ($request){
             return $query->whereDate('created_at', '<=', $request->input('max_date'));
         })
+        ->when($request->input('username'), function($query) use ($request){            
+            $query->where('username', 'ilike', '%' . $request->input('username') . '%');            
+        })
         ->when($request->input('company'), function($query) use ($request){
             return $query->whereHas('answers', function ($query) use ($request){
-                $query->where('question_id', 1)->where('answer_text', $request->input('company'));
+                $query->where('question_id', 1)->whereIn('answer_text', $request->input('company'));
             });
         })
         ->when($request->input('organization'), function($query) use ($request){
@@ -353,7 +356,7 @@ class Controller extends BaseController
         })
         ->when($request->input('project'), function($query) use ($request){
             return $query->whereHas('answers', function ($query) use ($request){
-                $query->where('question_id', 3)->where('answer_text', $request->input('project'));
+                $query->where('question_id', 3)->whereIn('answer_text', $request->input('project'));
             });
         })
         ->when($request->input('locality'), function($query) use ($request){
@@ -363,7 +366,7 @@ class Controller extends BaseController
         })
         ->when($request->input('payment_method'), function($query) use ($request){
             return $query->whereHas('answers', function ($query) use ($request){
-                $query->where('question_id', 5)->where('answer_text', $request->input('payment_method'));
+                $query->where('question_id', 5)->whereIn('answer_text', $request->input('payment_method'));
             });
         })
         ->when($request->input('min_sum'), function($query) use ($request){

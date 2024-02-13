@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Controller;
 use App\Models\Question;
 use Illuminate\Http\Request;
@@ -20,6 +21,13 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+Route::middleware(['web'])->group(function (){
+    Route::post('login', [AuthenticatedSessionController::class, 'store']);
+    Route::middleware('auth')->group(function () {
+        Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
+            ->name('logout');
+    });
+});
 
 Route::get('questions_list', function(){ return Question::all(['id', 'question_text']); });
 
@@ -39,7 +47,7 @@ Route::post('companies', [Controller::class, 'addCompany']);
 Route::post('companies/{company_id}', [Controller::class, 'updateCompany']);
 Route::delete('companies/{company_id}', [Controller::class, 'deleteCompany']);
 
-Route::get('companies/{company_id}/projects', [Controller::class, 'getProjects']);
+Route::get('projects', [Controller::class, 'getProjects']);
 Route::post('companies/{company_id}/projects', [Controller::class, 'addProject']);
 Route::post('companies/{company_id}/projects/{project_id}', [Controller::class, 'updateProject']);
 Route::delete('companies/{company_id}/projects/{project_id}', [Controller::class, 'deleteProject']);
