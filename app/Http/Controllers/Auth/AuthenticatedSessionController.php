@@ -44,7 +44,7 @@ class AuthenticatedSessionController extends Controller
                    ];
                } else {
                    return [
-                       'token' => $user->createToken($user->name)->plainTextToken
+                       'token' => $user->createToken($user->name, ['user'])->plainTextToken
                    ];
                }
             }
@@ -56,7 +56,8 @@ class AuthenticatedSessionController extends Controller
             return Response::json(array(
                 'code' => $e->getCode(),
                 'message'=>$e->getMessage()
-            ), $e->getCode());
+            // ), $e->getCode());
+            ), 401);
         }
 
 //        return redirect()->intended(RouteServiceProvider::HOME);
