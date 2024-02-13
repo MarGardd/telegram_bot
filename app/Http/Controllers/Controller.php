@@ -115,10 +115,11 @@ class Controller extends BaseController
         if($request->hasFile('file')){
             $file = $request->file('file');
             $path = $file->storeAs('', $file->hashName(), 'public');
-            PaycheckOrderFile::create([
+            $photo = PaycheckOrderFile::create([
                 'order_id' => $order_id,
                 'path' => $path
             ]);
+            return $photo;
         }
     }
 
