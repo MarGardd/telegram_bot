@@ -128,7 +128,7 @@ class Controller extends BaseController
         $file = PaycheckOrderFile::find($file_id);
         $path = Str::afterLast($file->path, '/');
         if(Storage::disk('public')->exists($path))
-            return response()->file(storage_path('app/public/' . $path));        
+            return response()->file(storage_path('app/public/' . $path));
         else
             abort(404);
     }
@@ -185,7 +185,9 @@ class Controller extends BaseController
     }
 
     public function getProjects(Request $request){
-        return Project::whereIn('company_id', $request->input('company_id'))->get(['id', 'title']);
+        return Project::query()->when($request->input('company_id'), function($query) use ($request){
+                 return $query->whereIn('company_id', $request->input('company_id'));
+             })->get(['id', 'title']);
     }
 
     public function addProject(Request $request, $company_id){
@@ -206,7 +208,7 @@ class Controller extends BaseController
     }
 
     public function getPaymentMethods(){
-        return PaymentMethod::all(['id', 'title']);
+        return PaymentMethod::all(['id', 'title', 'has_companies']);
     }
 
     public function addPaymentMethod(Request $request){
@@ -218,6 +220,12 @@ class Controller extends BaseController
     public function updatePaymentMethod(Request $request, $payment_method){
         $company = PaymentMethod::find($payment_method);
         $company->title = $request->input('title') ?? $company->title;
+        $company->save();
+    }
+
+    public function addQuestionPaymentMethod($payment_method){
+        $company = PaymentMethod::find($payment_method);
+        $company->has_companies = !$company->has_companies;
         $company->save();
     }
 
@@ -342,8 +350,8 @@ class Controller extends BaseController
         ->when($request->input('max_date'), function($query) use ($request){
             return $query->whereDate('created_at', '<=', $request->input('max_date'));
         })
-        ->when($request->input('username'), function($query) use ($request){            
-            $query->where('username', 'ilike', '%' . $request->input('username') . '%');            
+        ->when($request->input('username'), function($query) use ($request){
+            $query->where('username', 'ilike', '%' . $request->input('username') . '%');
         })
         ->when($request->input('company'), function($query) use ($request){
             return $query->whereHas('answers', function ($query) use ($request){

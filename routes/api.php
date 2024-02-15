@@ -25,7 +25,7 @@ Route::middleware(['web'])->group(function (){
     });
 });
 
-Route::middleware('auth:sanctum')->group(function (){
+//Route::middleware('auth:sanctum')->group(function (){
     Route::get('questions_list', function(){ return Question::all(['id', 'question_text']); });
 
     Route::get('paychecks', [Controller::class, 'index']);
@@ -52,6 +52,7 @@ Route::middleware('auth:sanctum')->group(function (){
     Route::get('payment_methods', [Controller::class, 'getPaymentMethods']);
     Route::post('payment_methods', [Controller::class, 'addPaymentMethod']);
     Route::post('payment_methods/{payment_method_id}', [Controller::class, 'updatePaymentMethod']);
+    Route::post('payment_methods/question/{payment_method_id}', [Controller::class, 'addQuestionPaymentMethod']);
     Route::delete('payment_methods/{payment_method_id}', [Controller::class, 'deletePaymentMethod']);
 
     Route::get('sheet', [Controller::class, 'sheet']);
@@ -64,4 +65,4 @@ Route::middleware('auth:sanctum')->group(function (){
         Route::post('admin/{user_id}', [Controller::class, 'setAdmin']);
         Route::delete('admin/{user_id}', [Controller::class, 'deleteAdmin']);
     });
-});
+//});
