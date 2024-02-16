@@ -50,7 +50,8 @@ class AuthenticatedSessionController extends Controller
             }
 
             throw ValidationException::withMessages([
-                'username' => ['Введены неверные данные.'],
+                'email' => ["Поле Email заполнено некорректно"],
+                'password' => ["Поле 'Пароль' обязательно для заполнения"],
             ]);
         } catch (\Exception $e){
             return Response::json(array(

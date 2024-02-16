@@ -408,11 +408,13 @@ class Controller extends BaseController
 
     public function createUser(Request $request)
     {
-        User::create([
+        $user = User::create([
             'name' => $request->input('name'),
             'email' => $request->input('email'),
             'password' => Hash::make($request->input('password')),
         ]);
+        return $user;
+
     }
 
     public function deleteUser($user_id){
