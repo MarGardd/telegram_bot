@@ -18,6 +18,7 @@ use Google\Service\Sheets\ValueRange;
 use Google_Client;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -127,10 +128,11 @@ class Controller extends BaseController
     {
         $file = PaycheckOrderFile::find($file_id);
         $path = Str::afterLast($file->path, '/');
-        if(Storage::disk('public')->exists($path))
-            return response()->file(storage_path('app/public/' . $path));
-        else
-            abort(404);
+//        if(Storage::disk('public')->exists($path))
+//            return response()->file(storage_path('app/public/' . $path));
+            return url($path);
+//        else
+//            abort(404);
     }
 
     public function deletePhoto($file_id){
@@ -280,11 +282,9 @@ class Controller extends BaseController
                 }
             }
 
-            $paths = '';
             foreach($order->files as $file){
-                $paths .= route('show-photo', $file->id)." ";
+                $result[$order->id][]  = 'http://localhost:3000/image/'.$file->id;
             }
-            $result[$order->id][] = $paths;
 
             ksort($result[$order->id]);
             $result[$order->id] = array_values($result[$order->id]);
@@ -324,6 +324,14 @@ class Controller extends BaseController
         $DrivePermisson->setEmailAddress('informatika.1827@gmail.com');
         $DrivePermisson->setRole('writer');
         $Drive->permissions->create($response->spreadsheetId, $DrivePermisson);
+
+        $Drive = new Drive($client);
+        $DrivePermisson = new Permission();
+        $DrivePermisson->setType('user');
+        $DrivePermisson->setEmailAddress('chubarkint@gmail.com');
+        $DrivePermisson->setRole('writer');
+        $Drive->permissions->create($response->spreadsheetId, $DrivePermisson);
+
 
         $range = 'Sheet1!A1:Z';
         $ValueRange = new ValueRange();
@@ -403,7 +411,11 @@ class Controller extends BaseController
     }
 
     public function getUsers(){
-        return User::orderByDesc('deleted')->orderBy('name')->get(['id', 'name', 'email']);
+        return User::query()->where("id", "!=", Auth::user()->id)->where("deleted", false)->orderBy('name')->get(['id', 'name', 'email', 'is_admin']);
+    }
+
+    public function getAuthUser() {
+        return Auth::user();
     }
 
     public function createUser(Request $request)
@@ -420,6 +432,7 @@ class Controller extends BaseController
     public function deleteUser($user_id){
         $user = User::find($user_id);
         $user->deleted = true;
+        $user->tokens()->delete();
         $user->save();
     }
 
@@ -431,7 +444,7 @@ class Controller extends BaseController
 
     public function setAdmin($user_id){
         $user = User::find($user_id);
-        $user->is_admin = true;
+        $user->is_admin = !$user->is_admin;
         $user->save();
     }
 

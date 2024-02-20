@@ -25,7 +25,7 @@ Route::middleware(['web'])->group(function (){
     });
 });
 
-//Route::middleware('auth:sanctum')->group(function (){
+Route::middleware('auth:sanctum')->group(function (){
     Route::get('questions_list', function(){ return Question::all(['id', 'question_text']); });
 
     Route::get('paychecks', [Controller::class, 'index']);
@@ -57,12 +57,12 @@ Route::middleware(['web'])->group(function (){
 
     Route::get('sheet', [Controller::class, 'sheet']);
 
-//    Route::middleware('abilities:admin')->group(function (){
-        Route::get('users', [Controller::class, 'getUsers']);
-        Route::post('users', [Controller::class, 'createUser']);
-        Route::post('users/{user_id}', [Controller::class, 'recoverUser']);
-        Route::delete('users/{user_id}', [Controller::class, 'deleteUser']);
-        Route::post('admin/{user_id}', [Controller::class, 'setAdmin']);
-        Route::delete('admin/{user_id}', [Controller::class, 'deleteAdmin']);
-//    });
+    Route::get('users', [Controller::class, 'getUsers']);
+    Route::get('auth_user', [Controller::class, 'getAuthUser']);
+    Route::post('users', [Controller::class, 'createUser']);
+    Route::post('users/{user_id}', [Controller::class, 'recoverUser']);
+    Route::delete('users/{user_id}', [Controller::class, 'deleteUser']);
+    Route::post('admin/{user_id}', [Controller::class, 'setAdmin']);
+    Route::delete('admin/{user_id}', [Controller::class, 'deleteAdmin']);
+});
 //});

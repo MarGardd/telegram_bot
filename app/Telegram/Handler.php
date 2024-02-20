@@ -129,9 +129,10 @@ class Handler extends WebhookHandler {
             $companyName = "";
             if($companyId)
                 $companyName =Company::query()->where('id', $companyId)->first()->title;
-            $paymentMethod = PaymentMethod::query()->where('id', $paymentMethodId)->first()->title.($companyId ? " (".$companyName.")" : "");
-            $this->createAnswer($this->chat->chat_id, $paymentMethod, 5);
-            if($paymentMethod === "Оплата с корпоративной карты" || $paymentMethod === "Снято с корпоративной карты"){
+            $paymentMethod = PaymentMethod::query()->where('id', $paymentMethodId)->first();
+            $paymentMethodTitle = $paymentMethod->title.($companyId ? " (".$companyName.")" : "Компании нет");
+            $this->createAnswer($this->chat->chat_id, $paymentMethodTitle, 5);
+            if($paymentMethod->has_companies && !$companyId){
                 $buttons = [];
                 $companies = Company::all();
                 $allCompanyCount = count($companies->toArray());
@@ -156,7 +157,7 @@ class Handler extends WebhookHandler {
                 //Log::info($log);
                 return;
             }
-            $this->chat->message('Способ оплаты: '.$paymentMethod)->silent()->send();
+            $this->chat->message('Способ оплаты: '.$paymentMethodTitle)->silent()->send();
             $this->chat->message("Укажите сумму оплаты")->forceReply()->send();
 
         } catch (\Exception $e){
